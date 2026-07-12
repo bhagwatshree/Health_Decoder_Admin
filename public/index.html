@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Medical Scanner — Cost Dashboard</title>
+<style>
+  :root {
+    --surface-1:      #fcfcfb;
+    --page-plane:     #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --gridline:       #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+
+    --series-aws:      #008300;
+    --series-gemini:   #2a78d6;
+    --series-sarvam:   #1baf7a;
+    --series-firebase: #eda100;
+
+    --status-good:     #0ca30c;
+    --status-warning:  #fab219;
+    --status-serious:  #ec835a;
+    --status-critical: #d03b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --surface-1:      #1a1a19;
+      --page-plane:     #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --gridline:       #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255,255,255,0.10);
+
+      --series-aws:      #008300;
+      --series-gemini:   #3987e5;
+      --series-sarvam:   #199e70;
+      --series-firebase: #c98500;
+
+      --status-good:     #0ca30c;
+      --status-warning:  #fab219;
+      --status-serious:  #ec835a;
+      --status-critical: #d03b3b;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--page-plane);
+    color: var(--text-primary);
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 20px 64px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+  h1 { font-size: 20px; margin: 0; }
+  .subtitle { color: var(--text-secondary); font-size: 13px; margin-top: 4px; }
+  .range-select { display: flex; gap: 4px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; padding: 3px; }
+  .range-select button {
+    border: none; background: transparent; color: var(--text-secondary); font-size: 13px;
+    padding: 6px 12px; border-radius: 6px; cursor: pointer;
+  }
+  .range-select button.active { background: var(--series-gemini); color: white; }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .kpi-tile {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 16px;
+  }
+  .kpi-tile .label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+  .kpi-tile .value { font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .kpi-tile .hint { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+  .card h2 { font-size: 15px; margin: 0 0 4px; }
+  .card .card-hint { font-size: 12px; color: var(--text-muted); margin-bottom: 16px; }
+
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; font-size: 12px; color: var(--text-secondary); }
+  .legend .swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 6px; vertical-align: -1px; }
+
+  .chart-scroll { overflow-x: auto; }
+  #bar-chart { display: block; }
+  .bar-seg { cursor: pointer; }
+  .bar-tooltip {
+    position: fixed; pointer-events: none; background: var(--text-primary); color: var(--surface-1);
+    font-size: 12px; padding: 6px 10px; border-radius: 6px; opacity: 0; transition: opacity 0.1s;
+    z-index: 10; white-space: nowrap;
+  }
+  .axis-label { fill: var(--text-muted); font-size: 10px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--gridline); font-variant-numeric: tabular-nums; }
+  th { color: var(--text-muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.02em; }
+  td.num, th.num { text-align: right; }
+  .table-scroll { overflow-x: auto; }
+
+  .opt-list { display: flex; flex-direction: column; gap: 10px; }
+  .opt-item { display: flex; gap: 10px; padding: 12px; border-radius: 8px; border: 1px solid var(--border); }
+  .opt-icon { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; margin-top: 5px; }
+  .opt-icon.good { background: var(--status-good); }
+  .opt-icon.warning { background: var(--status-warning); }
+  .opt-icon.critical { background: var(--status-critical); }
+  .opt-icon.info { background: var(--text-muted); }
+  .opt-title { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+  .opt-detail { font-size: 13px; color: var(--text-secondary); }
+
+  .caveat { font-size: 12px; color: var(--text-muted); margin-top: 24px; line-height: 1.6; }
+  .loading { color: var(--text-muted); padding: 40px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Medical Scanner — Cost Dashboard</h1>
+      <div class="subtitle">Local-only. Estimated costs from published pricing, not real invoices.</div>
+    </div>
+    <div class="range-select" id="range-select">
+      <button data-days="7">7d</button>
+      <button data-days="30" class="active">30d</button>
+      <button data-days="90">90d</button>
+    </div>
+  </header>
+
+  <div id="content" class="loading">Loading…</div>
+</div>
+<div class="bar-tooltip" id="tooltip"></div>
+
+<script>
+const PROVIDER_ORDER = ['aws', 'gemini', 'sarvam', 'firebase'];
+const PROVIDER_LABEL = { aws: 'AWS', gemini: 'Gemini', sarvam: 'Sarvam', firebase: 'Firebase' };
+const PROVIDER_COLOR_VAR = { aws: '--series-aws', gemini: '--series-gemini', sarvam: '--series-sarvam', firebase: '--series-firebase' };
+
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+function fmtUsd(n) {
+  if (n === null || n === undefined) return '—';
+  if (n < 0.01 && n > 0) return '$' + n.toFixed(5);
+  return '$' + n.toFixed(2);
+}
+function fmtInt(n) {
+  return n === null || n === undefined ? '—' : n.toLocaleString();
+}
+
+let currentDays = 30;
+
+async function loadSummary(days) {
+  const res = await fetch('/api/summary?days=' + days);
+  if (!res.ok) throw new Error('Failed to load summary: ' + res.status);
+  return res.json();
+}
+
+function renderKpis(data) {
+  const t = data.totals;
+  const awsFree = data.awsFreeTier;
+  const tiles = [
+    { label: 'Estimated total cost (' + data.days + 'd)', value: fmtUsd(t.totalCost), hint: PROVIDER_ORDER.map(p => {
+        const row = t.byProvider.find(r => r.provider === p);
+        return row ? PROVIDER_LABEL[p] + ' ' + fmtUsd(row.total_cost) : null;
+      }).filter(Boolean).join(' · ') },
+    { label: 'Total requests (' + data.days + 'd)', value: fmtInt(t.totalRequests), hint: 'across Gemini, Sarvam, Firebase' },
+    { label: 'Avg cost / request', value: fmtUsd(t.avgCostPerRequest), hint: '' },
+    { label: 'AWS Lambda free tier (month)', value: awsFree ? awsFree.requestsPctUsed.toFixed(1) + '%' : '—',
+      hint: awsFree ? fmtInt(Math.round(awsFree.invocations)) + ' / 1,000,000 requests' : 'metrics unavailable' },
+  ];
+  return tiles.map(tile => `
+    <div class="kpi-tile">
+      <div class="label">${tile.label}</div>
+      <div class="value">${tile.value}</div>
+      <div class="hint">${tile.hint}</div>
+    </div>`).join('');
+}
+
+function renderLegend() {
+  return PROVIDER_ORDER.map(p => `
+    <span><span class="swatch" style="background:${cssVar(PROVIDER_COLOR_VAR[p])}"></span>${PROVIDER_LABEL[p]}</span>
+  `).join('');
+}
+
+function renderBarChart(daily) {
+  const width = Math.max(600, daily.days.length * 28);
+  const height = 220;
+  const padLeft = 50, padBottom = 24, padTop = 10;
+  const plotW = width - padLeft - 10;
+  const plotH = height - padTop - padBottom;
+
+  const totalsPerDay = daily.days.map((_, i) =>
+    PROVIDER_ORDER.reduce((sum, p) => sum + ((daily.costByProvider[p] || [])[i] || 0), 0)
+  );
+  const maxTotal = Math.max(0.0001, ...totalsPerDay);
+  const barW = Math.max(6, plotW / daily.days.length - 6);
+
+  const gridlineCount = 4;
+  let gridlines = '';
+  for (let g = 0; g <= gridlineCount; g++) {
+    const y = padTop + plotH - (g / gridlineCount) * plotH;
+    const val = (g / gridlineCount) * maxTotal;
+    gridlines += `<line x1="${padLeft}" y1="${y}" x2="${width - 10}" y2="${y}" stroke="var(--gridline)" stroke-width="1" />`;
+    gridlines += `<text x="${padLeft - 8}" y="${y + 3}" text-anchor="end" class="axis-label">${fmtUsd(val)}</text>`;
+  }
+
+  let bars = '';
+  daily.days.forEach((day, i) => {
+    const x = padLeft + i * (plotW / daily.days.length) + 3;
+    let yCursor = padTop + plotH;
+    PROVIDER_ORDER.forEach(p => {
+      const val = (daily.costByProvider[p] || [])[i] || 0;
+      if (val <= 0) return;
+      const segH = (val / maxTotal) * plotH;
+      const y = yCursor - segH;
+      bars += `<rect class="bar-seg" x="${x}" y="${y}" width="${barW}" height="${Math.max(1, segH)}" rx="2"
+        fill="${cssVar(PROVIDER_COLOR_VAR[p])}"
+        data-day="${day}" data-provider="${p}" data-value="${val}" />`;
+      yCursor = y;
+    });
+    if (i % Math.ceil(daily.days.length / 12 || 1) === 0) {
+      bars += `<text x="${x + barW/2}" y="${height - 6}" text-anchor="middle" class="axis-label">${day.slice(5)}</text>`;
+    }
+  });
+
+  return `<svg id="bar-chart" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">${gridlines}${bars}</svg>`;
+}
+
+function attachBarTooltip() {
+  const tooltip = document.getElementById('tooltip');
+  document.querySelectorAll('.bar-seg').forEach(el => {
+    el.addEventListener('mousemove', (e) => {
+      const { day, provider, value } = el.dataset;
+      tooltip.textContent = `${day} · ${PROVIDER_LABEL[provider]}: ${fmtUsd(parseFloat(value))}`;
+      tooltip.style.left = (e.clientX + 12) + 'px';
+      tooltip.style.top = (e.clientY + 12) + 'px';
+      tooltip.style.opacity = '1';
+    });
+    el.addEventListener('mouseleave', () => { tooltip.style.opacity = '0'; });
+  });
+}
+
+function renderOperationTable(rows) {
+  if (rows.length === 0) return '<div class="card-hint">No requests in this window.</div>';
+  return `
+    <div class="table-scroll">
+    <table>
+      <thead><tr>
+        <th>Operation</th><th>Provider</th><th class="num">Requests</th><th class="num">Total cost</th>
+        <th class="num">Avg cost/req</th><th class="num">Avg latency</th><th class="num">Failures</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map(r => `<tr>
+          <td>${r.operation}</td>
+          <td>${PROVIDER_LABEL[r.provider] || r.provider}</td>
+          <td class="num">${fmtInt(r.requests)}</td>
+          <td class="num">${fmtUsd(r.total_cost)}</td>
+          <td class="num">${fmtUsd(r.avg_cost)}</td>
+          <td class="num">${r.avg_latency_ms ? Math.round(r.avg_latency_ms) + ' ms' : '—'}</td>
+          <td class="num">${fmtInt(r.failures)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>`;
+}
+
+function renderModelTable(rows) {
+  if (rows.length === 0) return '<div class="card-hint">No model-level data in this window.</div>';
+  return `
+    <div class="table-scroll">
+    <table>
+      <thead><tr>
+        <th>Provider</th><th>Model</th><th class="num">Requests</th><th class="num">Total cost</th>
+        <th class="num">Input tokens</th><th class="num">Output tokens</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map(r => `<tr>
+          <td>${PROVIDER_LABEL[r.provider] || r.provider}</td>
+          <td>${r.model}</td>
+          <td class="num">${fmtInt(r.requests)}</td>
+          <td class="num">${fmtUsd(r.total_cost)}</td>
+          <td class="num">${fmtInt(Number(r.total_input_tokens))}</td>
+          <td class="num">${fmtInt(Number(r.total_output_tokens))}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>`;
+}
+
+function renderOptimizations(list) {
+  if (list.length === 0) return '<div class="card-hint">No suggestions.</div>';
+  return `<div class="opt-list">${list.map(o => `
+    <div class="opt-item">
+      <div class="opt-icon ${o.severity}"></div>
+      <div>
+        <div class="opt-title">${o.title}</div>
+        <div class="opt-detail">${o.detail}</div>
+      </div>
+    </div>`).join('')}</div>`;
+}
+
+async function render(days) {
+  const content = document.getElementById('content');
+  try {
+    const data = await loadSummary(days);
+    content.innerHTML = `
+      <div class="kpi-row">${renderKpis(data)}</div>
+
+      <div class="card">
+        <h2>Daily cost by provider</h2>
+        <div class="card-hint">Stacked estimated cost per day — AWS is a CloudWatch-based approximation, others are logged per request.</div>
+        <div class="legend">${renderLegend()}</div>
+        <div class="chart-scroll">${renderBarChart(data.daily)}</div>
+      </div>
+
+      <div class="card">
+        <h2>Cost by operation</h2>
+        <div class="card-hint">Which feature (OCR, chat, TTS, ...) is driving spend, most expensive first.</div>
+        ${renderOperationTable(data.costByOperation)}
+      </div>
+
+      <div class="card">
+        <h2>Cost by model</h2>
+        <div class="card-hint">Gemini/Sarvam model-level breakdown with token counts.</div>
+        ${renderModelTable(data.costByModel)}
+      </div>
+
+      <div class="card">
+        <h2>Optimization suggestions</h2>
+        <div class="card-hint">Rule-based, computed from the data above — not exhaustive.</div>
+        ${renderOptimizations(data.optimizations)}
+      </div>
+
+      <div class="caveat">
+        Estimates only, not real invoices. AWS cost is derived from CloudWatch Lambda/API Gateway metrics using
+        published arm64 + HTTP API pricing, assuming the function's configured 512MB memory for every invocation
+        (CloudWatch doesn't report actual memory used without Lambda Insights). Gemini/Sarvam/Firebase costs are
+        computed at request time from published list prices in backend/pricing.js. Generated ${new Date(data.generatedAt).toLocaleString()}.
+      </div>
+    `;
+    attachBarTooltip();
+  } catch (err) {
+    content.innerHTML = `<div class="loading">Failed to load: ${err.message}</div>`;
+  }
+}
+
+document.getElementById('range-select').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  document.querySelectorAll('.range-select button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentDays = parseInt(btn.dataset.days, 10);
+  render(currentDays);
+});
+
+render(currentDays);
+</script>
+</body>
+</html>
