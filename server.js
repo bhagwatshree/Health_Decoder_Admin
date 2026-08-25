@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-import { dailyCostByProvider, costByOperation, costByModel, costByGeminiKeyIndex, totals, firebaseThisMonth, topUsersByCost, rawUsageEvents, recentRequests } from './lib/aggregate.js';
+import { dailyCostByProvider, costByOperation, costByModel, costByGeminiKeyIndex, totals, firebaseThisMonth, topUsersByCost, rawUsageEvents, recentRequests, tokenUsageByCustomer } from './lib/aggregate.js';
 import { dailyAwsCost, monthToDateFreeTier, getCloudFormationStackEvents, getCloudWatchAlarmStatuses } from './lib/awsCost.js';
 import { generateOptimizations } from './lib/optimize.js';
 import { calculateDoraMetrics } from './lib/dora.js';
@@ -27,7 +27,7 @@ installAuth(app, express);
 app.use(express.static(path.join(__dirname, 'public')));
 
 async function buildSummary(days) {
-  const [daily, ops, models, keyIndexRows, tot, fbMonth, users, awsDaily, awsFreeTier, rawEvents, stackEvents, customerAnalytics, recent, fraudAlerts, cwAlarms] = await Promise.all([
+  const [daily, ops, models, keyIndexRows, tot, fbMonth, users, awsDaily, awsFreeTier, rawEvents, stackEvents, customerAnalytics, recent, fraudAlerts, cwAlarms, tokenUsage] = await Promise.all([
     dailyCostByProvider(days),
     costByOperation(days),
     costByModel(days),
@@ -69,6 +69,10 @@ async function buildSummary(days) {
     getCloudWatchAlarmStatuses().catch((e) => {
       console.error('CloudWatch alarm query failed:', e.message);
       return [];
+    }),
+    tokenUsageByCustomer(days).catch((e) => {
+      console.error('Token usage query failed:', e.message);
+      return null;
     }),
   ]);
 
@@ -129,6 +133,7 @@ async function buildSummary(days) {
     dora,
     customerAnalytics,
     recentRequests: recent,
+    tokenUsage,
     fraudAlerts,
     cloudwatchAlarms: cwAlarms,
     firebaseThisMonth: fbMonth,

@@ -230,6 +230,13 @@ function fmtUsd(n) {
   if (inr < 0.05 && inr > 0) return '₹' + inr.toFixed(3) + ' ($' + val.toFixed(4) + ')';
   return '₹' + inr.toFixed(2) + ' ($' + val.toFixed(2) + ')';
 }
+function fmtTokens(n) {
+  const v = Number(n || 0);
+  if (v >= 1e9) return (v / 1e9).toFixed(2) + 'B';
+  if (v >= 1e6) return (v / 1e6).toFixed(2) + 'M';
+  if (v >= 1e3) return (v / 1e3).toFixed(1) + 'K';
+  return String(v);
+}
 function fmtInt(n) {
   return n === null || n === undefined ? '—' : n.toLocaleString();
 }
@@ -605,6 +612,120 @@ function renderCustomerView(data) {
         </table>
         </div>
       `}
+      ${renderTokenUsage(data)}
+    </div>
+  `;
+}
+
+/* Per-customer AI token consumption, split by Gemini vs Sarvam. */
+function renderTokenUsage(data) {
+  const tu = data.tokenUsage;
+  if (!tu || !tu.customers || tu.customers.length === 0) {
+    return `
+      <div class="card">
+        <div class="card-title">AI Token Usage by Customer</div>
+        <div class="card-hint">No Gemini or Sarvam usage recorded in this window.</div>
+      </div>`;
+  }
+
+  const t = tu.totals;
+  const ratio = (r) => r === null ? '—' : r.toFixed(2) + ' : 1';
+
+  const providerRows = tu.byProvider.map(p => `
+    <tr>
+      <td>
+        <span class="provider-pill">
+          <span class="provider-dot" style="background:${cssVar(PROVIDER_COLOR_VAR[p.provider] || '--text-muted')}"></span>
+          ${PROVIDER_LABEL[p.provider] || p.provider}
+        </span>
+      </td>
+      <td class="num">${fmtInt(p.requests)}</td>
+      <td class="num">${fmtTokens(p.inputTokens)}</td>
+      <td class="num">${fmtTokens(p.outputTokens)}</td>
+      <td class="num">${fmtInt(p.avgInputPerRequest)}</td>
+      <td class="num">${fmtInt(p.avgOutputPerRequest)}</td>
+      <td class="num">${p.units > 0 ? fmtInt(p.units) : '—'}</td>
+      <td class="num">${ratio(p.ioRatio)}</td>
+      <td class="num">${fmtUsd(p.totalCost)}</td>
+    </tr>`).join('');
+
+  const customerRows = tu.customers.map(c => `
+    <tr>
+      <td><code style="font-size: 11px;">${c.customerId}</code></td>
+      <td>${c.byProvider.map(p => `
+        <span class="provider-pill" style="font-size:10px; margin-right:4px;">
+          <span class="provider-dot" style="background:${cssVar(PROVIDER_COLOR_VAR[p.provider] || '--text-muted')}"></span>
+          ${p.provider} ${fmtInt(p.requests)}
+        </span>`).join('')}</td>
+      <td class="num">${fmtInt(c.requests)}</td>
+      <td class="num">${fmtTokens(c.inputTokens)}</td>
+      <td class="num">${fmtTokens(c.outputTokens)}</td>
+      <td class="num">${fmtInt(c.avgInputPerRequest)}</td>
+      <td class="num">${fmtInt(c.avgOutputPerRequest)}</td>
+      <td class="num">${ratio(c.ioRatio)}</td>
+      <td class="num">${fmtUsd(c.totalCost)}</td>
+    </tr>`).join('');
+
+  return `
+    <div class="kpi-row">
+      <div class="kpi-tile">
+        <div class="label">Input Tokens (${data.days}d)</div>
+        <div class="value">${fmtTokens(t.inputTokens)}</div>
+        <div class="hint">${fmtInt(t.avgInputPerRequest)} per request on average</div>
+      </div>
+      <div class="kpi-tile">
+        <div class="label">Output Tokens (${data.days}d)</div>
+        <div class="value">${fmtTokens(t.outputTokens)}</div>
+        <div class="hint">${fmtInt(t.avgOutputPerRequest)} per request on average</div>
+      </div>
+      <div class="kpi-tile">
+        <div class="label">Input : Output Ratio</div>
+        <div class="value" style="color:${t.ioRatio !== null && t.ioRatio > 3 ? '#e8833a' : 'inherit'};">${ratio(t.ioRatio)}</div>
+        <div class="hint">Above 3:1 suggests prompts are large relative to answers</div>
+      </div>
+      <div class="kpi-tile">
+        <div class="label">Cost per 1M Tokens</div>
+        <div class="value">${fmtUsd(t.costPer1mTokens)}</div>
+        <div class="hint">Blended across Gemini &amp; Sarvam</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Token Usage per Provider</div>
+      <div class="card-hint">
+        Gemini bills on tokens; several Sarvam operations bill on characters or pages, shown as Units.
+      </div>
+      <div class="table-scroll">
+      <table>
+        <thead><tr>
+          <th>Provider</th><th class="num">Requests</th>
+          <th class="num">Input</th><th class="num">Output</th>
+          <th class="num">Avg In/Req</th><th class="num">Avg Out/Req</th>
+          <th class="num">Units</th><th class="num">In:Out</th><th class="num">Cost</th>
+        </tr></thead>
+        <tbody>${providerRows}</tbody>
+      </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">AI Token Usage by Customer</div>
+      <div class="card-hint">
+        Top ${tu.customers.length} of ${fmtInt(tu.customersWithUsage)} customers with Gemini or Sarvam
+        usage, ranked by total tokens. Firebase phone-auth is excluded &mdash; it is billed per
+        verification, not per token.
+      </div>
+      <div class="table-scroll">
+      <table>
+        <thead><tr>
+          <th>Customer</th><th>Providers</th><th class="num">Requests</th>
+          <th class="num">Input</th><th class="num">Output</th>
+          <th class="num">Avg In/Req</th><th class="num">Avg Out/Req</th>
+          <th class="num">In:Out</th><th class="num">Cost</th>
+        </tr></thead>
+        <tbody>${customerRows}</tbody>
+      </table>
+      </div>
     </div>
   `;
 }
