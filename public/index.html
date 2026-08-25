@@ -214,6 +214,9 @@
 <script>
 const PROVIDER_ORDER = ['aws', 'gemini', 'sarvam', 'firebase'];
 const PROVIDER_LABEL = { aws: 'AWS Lambda APIs', gemini: 'Gemini API', sarvam: 'Sarvam API', firebase: 'Firebase Auth' };
+// Only these two providers meter usage in tokens; Firebase phone-auth and AWS
+// are billed per verification / per invocation, so their token cells read '—'.
+const TOKEN_METERED_PROVIDERS = new Set(['gemini', 'sarvam']);
 const PROVIDER_COLOR_VAR = { aws: '--series-aws', gemini: '--series-gemini', sarvam: '--series-sarvam', firebase: '--series-firebase' };
 
 function cssVar(name) {
@@ -268,6 +271,8 @@ function renderLiveRequestsTable(recent) {
         <th>Model</th>
         <th>Key Used</th>
         <th>Customer / Device ID</th>
+        <th class="num">Input Tokens</th>
+        <th class="num">Output Tokens</th>
         <th class="num">Latency</th>
         <th class="num">Cost</th>
         <th>Status</th>
@@ -289,6 +294,11 @@ function renderLiveRequestsTable(recent) {
               : '<span style="color: var(--text-muted); font-size: 11px;">—</span>'}
           </td>
           <td><code style="font-size: 11px;">${r.customer_id}</code></td>
+          <td class="num">${!TOKEN_METERED_PROVIDERS.has(r.provider) ? '—'
+            : r.input_tokens ? fmtInt(Number(r.input_tokens))
+            : r.units ? fmtInt(Number(r.units)) + ' u' : '—'}</td>
+          <td class="num">${!TOKEN_METERED_PROVIDERS.has(r.provider) || !r.output_tokens ? '—'
+            : fmtInt(Number(r.output_tokens))}</td>
           <td class="num">${r.latency_ms ? Math.round(r.latency_ms) + ' ms' : '—'}</td>
           <td class="num">${fmtUsd(parseFloat(r.cost_usd))}</td>
           <td>
