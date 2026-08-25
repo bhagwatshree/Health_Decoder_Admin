@@ -1,0 +1,69 @@
+name: Deploy dashboard to Lambda
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write      # required for OIDC; no long-lived AWS keys are stored
+
+concurrency:
+  group: deploy-dashboard
+  cancel-in-progress: false
+
+env:
+  FUNCTION_NAME: health-decoder-admin-dashboard
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install production dependencies
+        run: npm ci --omit=dev
+
+      - name: Build deployment package
+        run: zip -qr dashboard.zip . -x '.git/*' '.github/*' '*.map' '*/test/*' '*/.bin/*' '.env'
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::405114130882:role/github-actions-admin-dashboard-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy code
+        run: |
+          aws lambda update-function-code \
+            --function-name "$FUNCTION_NAME" \
+            --zip-file fileb://dashboard.zip \
+            --no-cli-pager --output text --query 'LastUpdateStatus'
+          aws lambda wait function-updated --function-name "$FUNCTION_NAME"
+
+      - name: Deploy configuration
+        # AWS_REGION is a reserved Lambda variable supplied by the runtime — setting it errors.
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DASHBOARD_USER: ${{ secrets.DASHBOARD_USER }}
+          DASHBOARD_PASSWORD: ${{ secrets.DASHBOARD_PASSWORD }}
+          STACK_NAME: ${{ secrets.STACK_NAME }}
+        run: |
+          aws lambda update-function-configuration \
+            --function-name "$FUNCTION_NAME" \
+            --environment "Variables={DATABASE_URL=$DATABASE_URL,DASHBOARD_USER=$DASHBOARD_USER,DASHBOARD_PASSWORD=$DASHBOARD_PASSWORD,STACK_NAME=$STACK_NAME,SUMMARY_CACHE_TTL_MS=300000,PG_POOL_MAX=2}" \
+            --no-cli-pager --output text --query 'LastUpdateStatus'
+          aws lambda wait function-updated --function-name "$FUNCTION_NAME"
+
+      - name: Smoke test
+        run: |
+          URL=$(aws lambda get-function-url-config --function-name "$FUNCTION_NAME" \
+                  --query FunctionUrl --output text)
+          CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 45 "$URL")
+          echo "Unauthenticated request returned $CODE (401 expected)"
+          test "$CODE" = "401"

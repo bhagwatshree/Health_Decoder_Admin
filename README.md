@@ -10,13 +10,35 @@ Repo: [github.com/bhagwatshree/Health_Decoder_Admin](https://github.com/bhagwats
 
 ```bash
 npm install
-cp .env.example .env   # fill in DATABASE_URL (same Neon DB the backend uses)
-npm start              # http://localhost:4300
+cp .env.example .env
+openssl rand -base64 24   # paste into DASHBOARD_PASSWORD
+npm start                 # http://localhost:4300
 ```
+
+Fill in `DATABASE_URL` (the same Neon DB the backend uses — prefer the **pooled**
+`-pooler` endpoint) and `DASHBOARD_USER` / `DASHBOARD_PASSWORD`. The server refuses to
+start without credentials; set `DASHBOARD_AUTH_DISABLED=true` to skip auth on localhost.
 
 Requires AWS CLI credentials already configured on this machine (`aws configure`) with
 CloudWatch read access to the `medical-scanner` stack's region — used to estimate Lambda/API
 Gateway cost, since Gemini/Sarvam/Firebase have no billing API for personal API keys.
+
+## Access control
+
+Every route — the API and the static frontend — sits behind HTTP Basic Auth
+(`lib/auth.js`). This dashboard exposes production cost, customer, and fraud data, so
+auth fails closed rather than defaulting to open. Before putting it on any public host,
+also confirm the summary cache TTL is sane and that `.env` is not committed.
+
+## Caching
+
+`/api/summary` is cached in memory per `days` value (`SUMMARY_CACHE_TTL_MS`, default 5
+minutes), with concurrent misses deduped into a single upstream fetch. Each miss costs
+~15 Postgres queries plus CloudWatch `GetMetricData` calls, which are billed per metric
+($0.01/1,000) and **excluded from the CloudWatch free tier** — so the cache is a cost
+control, not just a latency win. Responses carry `cached` and `cachedAt` fields.
+
+The cache is per-process: on a scale-to-zero host each container keeps its own copy.
 
 ## What it shows
 
