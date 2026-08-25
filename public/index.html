@@ -202,6 +202,9 @@
     <button class="tab-btn" data-tab="billing">
       <span class="tab-icon">💳</span> Actual Billing & Key Audit
     </button>
+    <button class="tab-btn" data-tab="fraud">
+      <span class="tab-icon">🚨</span> Fraud & Alarms
+    </button>
   </div>
 
   <div id="content" class="loading">Loading executive metrics…</div>
@@ -934,6 +937,145 @@ function renderBillingView(data) {
 }
 
 /* ==========================================================================
+   TAB 5: FRAUD & CLOUDWATCH ALARMS VIEW
+   ========================================================================== */
+function renderFraudAlarmsView(data) {
+  const fraud = data.fraudAlerts || {};
+  const threatLevel = fraud.threatLevel || 'NORMAL';
+  const riskScore = fraud.riskScore || 0;
+  const alerts = fraud.alerts || [];
+  const cwAlarms = data.cloudwatchAlarms || [];
+
+  let threatClass = 'rating-elite';
+  if (threatLevel === 'CRITICAL' || threatLevel === 'SEVERE') threatClass = 'rating-low';
+  else if (threatLevel === 'ELEVATED') threatClass = 'rating-medium';
+
+  return `
+    <div class="kpi-row">
+      <div class="card" style="margin-bottom:0; padding:18px 24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-size:12px; font-weight:600; color:var(--text-secondary); text-transform:uppercase;">System Fraud Threat Level</div>
+            <div style="font-size:28px; font-weight:700; margin-top:4px;">${threatLevel}</div>
+          </div>
+          <span class="dora-badge ${threatClass}" style="font-size:14px; padding:6px 14px;">Risk Score: ${riskScore} / 100</span>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:0; padding:18px 24px;">
+        <div style="font-size:12px; font-weight:600; color:var(--text-secondary); text-transform:uppercase;">Active Fraud Alerts</div>
+        <div style="font-size:28px; font-weight:700; margin-top:4px; color:${alerts.length > 0 ? '#d03b3b' : '#1baf7a'};">${alerts.length} Flagged ${alerts.length === 1 ? 'Pattern' : 'Patterns'}</div>
+      </div>
+
+      <div class="card" style="margin-bottom:0; padding:18px 24px;">
+        <div style="font-size:12px; font-weight:600; color:var(--text-secondary); text-transform:uppercase;">AWS CloudWatch Alarms</div>
+        <div style="font-size:28px; font-weight:700; margin-top:4px;">${cwAlarms.length > 0 ? cwAlarms.filter(a => a.stateValue === 'OK').length + ' / ' + cwAlarms.length + ' OK' : '0 Configured'}</div>
+      </div>
+    </div>
+
+    <!-- Active Real-Time Fraud & Anomaly Alerts -->
+    <div class="card">
+      <h2>🚨 Real-Time Fraud & Anomaly Detection Alerts</h2>
+      <div class="card-hint">
+        Scans PostgreSQL <code>api_usage_events</code> in real-time for SMS/OTP flooding, direct Gemini API scraping, Sarvam AI surges, and failure spikes.
+      </div>
+      ${alerts.length === 0 ? `
+        <div style="padding: 24px; text-align: center; color: var(--text-muted); background: var(--page-plane); border-radius: 8px; border: 1px solid var(--border);">
+          ✅ No active fraud, OTP flooding, or API scraping patterns detected in the current window.
+        </div>
+      ` : `
+        <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>Severity</th>
+            <th>Category & Threat</th>
+            <th>Flagged Entity (User / Device)</th>
+            <th class="num">Volume</th>
+            <th>Window</th>
+            <th>Action Recommendation</th>
+          </tr></thead>
+          <tbody>
+            ${alerts.map(a => `<tr>
+              <td>
+                <span class="dora-badge ${a.severity === 'HIGH' ? 'rating-low' : 'rating-medium'}">
+                  ${a.severity}
+                </span>
+              </td>
+              <td>
+                <b>${a.title}</b>
+                <div style="font-size:11px; color:var(--text-muted);">${a.description}</div>
+              </td>
+              <td><code style="font-size:11px;">${a.userEmail !== 'Guest Device' ? a.userEmail : a.entityId}</code></td>
+              <td class="num"><b>${a.count}</b> calls</td>
+              <td>${a.windowMinutes} mins</td>
+              <td style="font-size:12px; color:var(--text-secondary);">${a.recommendation}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+        </div>
+      `}
+    </div>
+
+    <!-- AWS CloudWatch Alarms Status Grid -->
+    <div class="card">
+      <h2>☁️ AWS CloudWatch Metric Alarms</h2>
+      <div class="card-hint">
+        Live CloudWatch alarms deployed in your AWS account for Lambda errors, request bursts, API Gateway 4xx/5xx floods, and log metrics.
+      </div>
+      ${cwAlarms.length === 0 ? `
+        <div style="padding: 20px; background: rgba(237, 161, 0, 0.1); border: 1px solid rgba(237, 161, 0, 0.3); border-radius: 8px; margin-bottom: 16px;">
+          <b style="color: #c98500;">⚠️ No AWS CloudWatch Alarms Configured Yet</b>
+          <div style="font-size:13px; margin-top:6px; color:var(--text-secondary);">
+            Deploy the included CloudFormation template to immediately monitor Lambda error surges, API Gateway floods, and custom log metric alarms.
+          </div>
+        </div>
+      ` : `
+        <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>Alarm Name</th>
+            <th>Namespace</th>
+            <th>Metric</th>
+            <th>Status</th>
+            <th>State Reason</th>
+          </tr></thead>
+          <tbody>
+            ${cwAlarms.map(a => `<tr>
+              <td><b>${a.alarmName}</b></td>
+              <td><code>${a.namespace}</code></td>
+              <td><code>${a.metricName}</code></td>
+              <td>
+                <span class="status-pill ${a.stateValue === 'OK' ? 'status-success' : (a.stateValue === 'ALARM' ? 'status-error' : 'rating-medium')}">
+                  ${a.stateValue}
+                </span>
+              </td>
+              <td style="font-size:12px; color:var(--text-secondary);">${a.stateReason || 'Normal operation'}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+        </div>
+      `}
+    </div>
+
+    <!-- CloudFormation Deployment Guide Card -->
+    <div class="card">
+      <h2>🛠️ AWS CloudFormation Infrastructure Alarm Setup</h2>
+      <div class="card-hint">
+        Deploy automated CloudWatch alarms and SNS notification topics to your AWS environment using the pre-built template.
+      </div>
+      <div style="background: var(--page-plane); padding: 16px; border-radius: 8px; border: 1px solid var(--border); font-family: monospace; font-size: 12px; overflow-x: auto; color: var(--text-primary);">
+        # Deploy CloudWatch Alarms & SNS Fraud Topic via AWS CLI:<br/>
+        aws cloudformation deploy \<br/>
+        &nbsp;&nbsp;--template-file aws/cloudwatch-fraud-alarms.yaml \<br/>
+        &nbsp;&nbsp;--stack-name medical-scanner-fraud-alarms \<br/>
+        &nbsp;&nbsp;--parameter-overrides NotificationEmail="admin@example.com" FunctionName="medical-scanner-prod-backend" \<br/>
+        &nbsp;&nbsp;--capabilities CAPABILITY_IAM
+      </div>
+    </div>
+  `;
+}
+
+/* ==========================================================================
    MAIN RENDER DISPATCHER
    ========================================================================== */
 function renderActiveTab() {
@@ -949,6 +1091,8 @@ function renderActiveTab() {
     html = renderCustomerView(cachedData);
   } else if (activeTab === 'billing') {
     html = renderBillingView(cachedData);
+  } else if (activeTab === 'fraud') {
+    html = renderFraudAlarmsView(cachedData);
   }
 
   html += `

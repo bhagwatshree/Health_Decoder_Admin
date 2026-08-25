@@ -3,10 +3,11 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { dailyCostByProvider, costByOperation, costByModel, costByGeminiKeyIndex, totals, firebaseThisMonth, topUsersByCost, rawUsageEvents, recentRequests } from './lib/aggregate.js';
-import { dailyAwsCost, monthToDateFreeTier, getCloudFormationStackEvents } from './lib/awsCost.js';
+import { dailyAwsCost, monthToDateFreeTier, getCloudFormationStackEvents, getCloudWatchAlarmStatuses } from './lib/awsCost.js';
 import { generateOptimizations } from './lib/optimize.js';
 import { calculateDoraMetrics } from './lib/dora.js';
 import { calculateCustomerAnalytics } from './lib/customer.js';
+import { evaluateFraudAlerts } from './lib/fraud.js';
 
 dotenv.config();
 
@@ -19,7 +20,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/api/summary', async (req, res) => {
   const days = Math.min(90, Math.max(1, parseInt(req.query.days, 10) || 30));
   try {
-    const [daily, ops, models, keyIndexRows, tot, fbMonth, users, awsDaily, awsFreeTier, rawEvents, stackEvents, customerAnalytics, recent] = await Promise.all([
+    const [daily, ops, models, keyIndexRows, tot, fbMonth, users, awsDaily, awsFreeTier, rawEvents, stackEvents, customerAnalytics, recent, fraudAlerts, cwAlarms] = await Promise.all([
       dailyCostByProvider(days),
       costByOperation(days),
       costByModel(days),
@@ -52,6 +53,14 @@ app.get('/api/summary', async (req, res) => {
       }),
       recentRequests(30).catch((e) => {
         console.error('Recent requests query failed:', e.message);
+        return [];
+      }),
+      evaluateFraudAlerts(days).catch((e) => {
+        console.error('Fraud evaluation failed:', e.message);
+        return { threatLevel: 'UNKNOWN', riskScore: 0, totalActiveAlerts: 0, alerts: [] };
+      }),
+      getCloudWatchAlarmStatuses().catch((e) => {
+        console.error('CloudWatch alarm query failed:', e.message);
         return [];
       }),
     ]);
@@ -113,6 +122,8 @@ app.get('/api/summary', async (req, res) => {
       dora,
       customerAnalytics,
       recentRequests: recent,
+      fraudAlerts,
+      cloudwatchAlarms: cwAlarms,
       firebaseThisMonth: fbMonth,
       topUsers: users,
       awsFreeTier,

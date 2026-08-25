@@ -1,0 +1,205 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  CloudWatch Alarms, Log Metric Filters, and SNS Notifications for Medical Scanner
+  Fraud Prevention (Gemini API abuse, SMS/OTP flooding, Sarvam AI surges, and Lambda errors).
+
+Parameters:
+  Environment:
+    Type: String
+    Default: production
+    AllowedValues: [development, staging, production]
+    Description: Deployment environment name.
+
+  NotificationEmail:
+    Type: String
+    Default: admin@example.com
+    Description: Email address to receive immediate fraud and alarm alert notifications.
+
+  FunctionName:
+    Type: String
+    Default: medical-scanner-prod-backend
+    Description: Name of the AWS Lambda function to monitor.
+
+  ApiId:
+    Type: String
+    Default: ""
+    Description: (Optional) HTTP API Gateway ID to monitor for 4xx/5xx floods.
+
+  LogGroupName:
+    Type: String
+    Default: /aws/lambda/medical-scanner-prod-backend
+    Description: CloudWatch Log Group name where backend API events are logged.
+
+Conditions:
+  HasApiId: !Not [!Equals [!Ref ApiId, ""]]
+
+Resources:
+  # ============================================================================
+  # 1. SNS TOPIC FOR ALERTS & FRAUD NOTIFICATIONS
+  # ============================================================================
+  FraudAlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub ${AWS::StackName}-fraud-alerts
+      DisplayName: Medical Scanner Fraud & Anomaly Alerts
+
+  FraudEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref FraudAlertsTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  # ============================================================================
+  # 2. LAMBDA SYSTEM ALARMS (INVOCATION SURGE & ERRORS)
+  # ============================================================================
+  LambdaErrorSurgeAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-Lambda-Error-Surge
+      AlarmDescription: Triggers when Lambda function errors exceed 5 failures within 5 minutes.
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref FunctionName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+        - !Ref FraudAlertsTopic
+      OKActions:
+        - !Ref FraudAlertsTopic
+
+  LambdaHighInvocationBurstAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-Lambda-High-Invocation-Burst
+      AlarmDescription: Triggers when Lambda invocations exceed 200 requests in 5 minutes (potential bot/DDoS).
+      Namespace: AWS/Lambda
+      MetricName: Invocations
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref FunctionName
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 200
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref FraudAlertsTopic
+
+  # ============================================================================
+  # 3. API GATEWAY 4XX / 5XX FLOOD ALARMS
+  # ============================================================================
+  ApiGateway4xxFloodAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: HasApiId
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-APIGateway-4xx-Flood
+      AlarmDescription: Triggers when HTTP API Gateway returns >30 4xx client errors in 5 minutes.
+      Namespace: AWS/ApiGateway
+      MetricName: 4XXError
+      Dimensions:
+        - Name: ApiId
+          Value: !Ref ApiId
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 30
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref FraudAlertsTopic
+
+  # ============================================================================
+  # 4. CUSTOM LOG METRIC FILTERS & FRAUD ALARMS
+  # ============================================================================
+
+  # --- A. SMS / OTP FLOODING METRIC & ALARM ---
+  SMSOTPFloodingMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref LogGroupName
+      FilterPattern: '[time, status="OTP_SENT" || status="OTP_VERIFY_ATTEMPT", ...]'
+      MetricTransformations:
+        - MetricName: SMSOTPRequestsCount
+          MetricNamespace: MedicalScanner/Fraud
+          MetricValue: "1"
+
+  SMSOTPFloodingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-Fraud-SMS-OTP-Flooding
+      AlarmDescription: Triggers when SMS/OTP request volume exceeds 15 calls in 5 minutes across single/multiple devices.
+      Namespace: MedicalScanner/Fraud
+      MetricName: SMSOTPRequestsCount
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 15
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref FraudAlertsTopic
+
+  # --- B. GEMINI API DIRECT ABUSE METRIC & ALARM ---
+  GeminiDirectAbuseMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref LogGroupName
+      FilterPattern: '[time, provider="gemini", ...]'
+      MetricTransformations:
+        - MetricName: GeminiAPIRequestsCount
+          MetricNamespace: MedicalScanner/Fraud
+          MetricValue: "1"
+
+  GeminiDirectAbuseAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-Fraud-Gemini-API-Direct-Abuse
+      AlarmDescription: Triggers when Gemini API calls exceed 50 in 5 minutes (indicating automated scraping or bypass).
+      Namespace: MedicalScanner/Fraud
+      MetricName: GeminiAPIRequestsCount
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 50
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref FraudAlertsTopic
+
+  # --- C. SARVAM AI AUDIO SURGE METRIC & ALARM ---
+  SarvamAISurgeMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref LogGroupName
+      FilterPattern: '[time, provider="sarvam", ...]'
+      MetricTransformations:
+        - MetricName: SarvamAPIRequestsCount
+          MetricNamespace: MedicalScanner/Fraud
+          MetricValue: "1"
+
+  SarvamAISurgeAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-Fraud-Sarvam-AI-Surge
+      AlarmDescription: Triggers when Sarvam AI audio processing calls exceed 30 in 5 minutes.
+      Namespace: MedicalScanner/Fraud
+      MetricName: SarvamAPIRequestsCount
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 30
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref FraudAlertsTopic
+
+Outputs:
+  FraudAlertsTopicArn:
+    Description: ARN of the SNS Topic for Fraud and System Alarms
+    Value: !Ref FraudAlertsTopic
+
+  LambdaErrorSurgeAlarmArn:
+    Description: ARN of the Lambda Error Surge CloudWatch Alarm
+    Value: !GetAtt LambdaErrorSurgeAlarm.Arn
