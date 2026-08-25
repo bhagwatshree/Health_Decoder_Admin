@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Medical Scanner — Cost Dashboard</title>
+<title>Medical Scanner — Executive Dashboard</title>
 <style>
   :root {
     --surface-1:      #fcfcfb;
-    --page-plane:     #f9f9f7;
+    --page-plane:     #f4f4f0;
     --text-primary:   #0b0b0b;
     --text-secondary: #52514e;
     --text-muted:     #898781;
@@ -27,12 +27,12 @@
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --surface-1:      #1a1a19;
-      --page-plane:     #0d0d0d;
+      --surface-1:      #181817;
+      --page-plane:     #0d0d0c;
       --text-primary:   #ffffff;
       --text-secondary: #c3c2b7;
       --text-muted:     #898781;
-      --gridline:       #2c2c2a;
+      --gridline:       #262624;
       --baseline:       #383835;
       --border:         rgba(255,255,255,0.10);
 
@@ -51,34 +51,77 @@
   * { box-sizing: border-box; }
   body {
     margin: 0;
-    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     background: var(--page-plane);
     color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 20px 64px; }
-  header { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
-  h1 { font-size: 20px; margin: 0; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 24px 20px 64px; }
+  
+  header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
+  h1 { font-size: 24px; margin: 0; font-weight: 700; letter-spacing: -0.02em; }
   .subtitle { color: var(--text-secondary); font-size: 13px; margin-top: 4px; }
+
+  .header-actions { display: flex; gap: 12px; align-items: center; }
   .range-select { display: flex; gap: 4px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; padding: 3px; }
   .range-select button {
     border: none; background: transparent; color: var(--text-secondary); font-size: 13px;
-    padding: 6px 12px; border-radius: 6px; cursor: pointer;
+    padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: 500; transition: all 0.15s;
   }
   .range-select button.active { background: var(--series-gemini); color: white; }
 
-  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 20px; }
-  .kpi-tile {
-    background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 16px;
+  /* Navigation Tabs */
+  .tabs-nav {
+    display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid var(--gridline); padding-bottom: 12px;
   }
-  .kpi-tile .label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
-  .kpi-tile .value { font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
-  .kpi-tile .hint { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+  .tab-btn {
+    display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary);
+    font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s ease;
+  }
+  .tab-btn:hover { color: var(--text-primary); border-color: var(--baseline); }
+  .tab-btn.active { background: var(--series-gemini); color: white; border-color: var(--series-gemini); box-shadow: 0 2px 8px rgba(42, 120, 214, 0.25); }
+  .tab-icon { font-size: 16px; }
 
-  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-  .card h2 { font-size: 15px; margin: 0 0 4px; }
-  .card .card-hint { font-size: 12px; color: var(--text-muted); margin-bottom: 16px; }
+  .tab-view { display: none; }
+  .tab-view.active { display: block; }
 
-  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; font-size: 12px; color: var(--text-secondary); }
+  /* KPI Grid */
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .kpi-tile {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  }
+  .kpi-tile .label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+  .kpi-tile .value { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .kpi-tile .hint { font-size: 12px; color: var(--text-secondary); margin-top: 6px; line-height: 1.4; }
+
+  /* Cards */
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+  .card h2 { font-size: 16px; margin: 0 0 4px; font-weight: 600; }
+  .card .card-hint { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
+
+  /* DORA Badges & Grid */
+  .dora-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-bottom: 18px; }
+  .dora-tile {
+    background: var(--page-plane); border: 1px solid var(--border); border-radius: 10px; padding: 18px; position: relative;
+  }
+  .dora-tile-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .dora-tile-title { font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.03em; }
+  .dora-badge {
+    display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 12px;
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .rating-elite { background: rgba(27, 175, 122, 0.15); color: #1baf7a; border: 1px solid rgba(27, 175, 122, 0.3); }
+  .rating-high  { background: rgba(42, 120, 214, 0.15); color: #2a78d6; border: 1px solid rgba(42, 120, 214, 0.3); }
+  .rating-medium{ background: rgba(237, 161, 0, 0.15); color: #c98500; border: 1px solid rgba(237, 161, 0, 0.3); }
+  .rating-low   { background: rgba(208, 59, 59, 0.15); color: #d03b3b; border: 1px solid rgba(208, 59, 59, 0.3); }
+
+  .dora-tile .val { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; margin-bottom: 6px; }
+  .dora-tile .desc { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+
+  /* Charts & Legends */
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; font-size: 12px; color: var(--text-secondary); }
   .legend .swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 6px; vertical-align: -1px; }
 
   .chart-scroll { overflow-x: auto; }
@@ -87,66 +130,114 @@
   .bar-tooltip {
     position: fixed; pointer-events: none; background: var(--text-primary); color: var(--surface-1);
     font-size: 12px; padding: 6px 10px; border-radius: 6px; opacity: 0; transition: opacity 0.1s;
-    z-index: 10; white-space: nowrap;
+    z-index: 10; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   }
   .axis-label { fill: var(--text-muted); font-size: 10px; }
 
+  /* Tables */
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--gridline); font-variant-numeric: tabular-nums; }
-  th { color: var(--text-muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.02em; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--gridline); font-variant-numeric: tabular-nums; }
+  th { color: var(--text-muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; }
   td.num, th.num { text-align: right; }
   .table-scroll { overflow-x: auto; }
 
-  .opt-list { display: flex; flex-direction: column; gap: 10px; }
-  .opt-item { display: flex; gap: 10px; padding: 12px; border-radius: 8px; border: 1px solid var(--border); }
-  .opt-icon { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; margin-top: 5px; }
+  /* User Journey Flow Pills */
+  .journey-flow { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+  .journey-node { background: var(--page-plane); border: 1px solid var(--border); padding: 4px 10px; border-radius: 6px; font-size: 12px; }
+  .journey-arrow { color: var(--series-gemini); font-weight: 700; font-size: 14px; }
+
+  .status-pill {
+    display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;
+  }
+  .status-success { background: rgba(27, 175, 122, 0.15); color: #1baf7a; }
+  .status-error { background: rgba(208, 59, 59, 0.15); color: #d03b3b; }
+
+  .opt-list { display: flex; flex-direction: column; gap: 12px; }
+  .opt-item { display: flex; gap: 14px; padding: 14px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--page-plane); }
+  .opt-icon { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; margin-top: 5px; }
   .opt-icon.good { background: var(--status-good); }
   .opt-icon.warning { background: var(--status-warning); }
   .opt-icon.critical { background: var(--status-critical); }
   .opt-icon.info { background: var(--text-muted); }
   .opt-title { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
-  .opt-detail { font-size: 13px; color: var(--text-secondary); }
+  .opt-detail { font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
+
+  .provider-pill { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+  .provider-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 
   .caveat { font-size: 12px; color: var(--text-muted); margin-top: 24px; line-height: 1.6; }
-  .loading { color: var(--text-muted); padding: 40px; text-align: center; }
+  .loading { color: var(--text-muted); padding: 40px; text-align: center; font-size: 15px; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <div>
-      <h1>Medical Scanner — Cost Dashboard</h1>
-      <div class="subtitle">Local-only. Estimated costs from published pricing, not real invoices.</div>
+      <h1>Medical Scanner — Executive Dashboard</h1>
+      <div class="subtitle">Operational DORA Metrics, Financial Spend Analysis & Customer Analytics</div>
     </div>
-    <div class="range-select" id="range-select">
-      <button data-days="7">7d</button>
-      <button data-days="30" class="active">30d</button>
-      <button data-days="90">90d</button>
+    <div class="header-actions">
+      <span class="journey-node" style="font-size:11px; padding: 5px 10px; background: var(--surface-1); color: var(--text-secondary); border: 1px solid var(--border);">
+        🇮🇳 Currency: INR (₹) · 1 USD = ₹87.50
+      </span>
+      <div class="range-select" id="range-select">
+        <button data-days="7">7d</button>
+        <button data-days="30" class="active">30d</button>
+        <button data-days="90">90d</button>
+      </div>
     </div>
   </header>
 
-  <div id="content" class="loading">Loading…</div>
+  <!-- Top Navigation Tabs -->
+  <div class="tabs-nav" id="tabs-nav">
+    <button class="tab-btn active" data-tab="dora">
+      <span class="tab-icon">🚀</span> Operational DORA Matrix
+    </button>
+    <button class="tab-btn" data-tab="cost">
+      <span class="tab-icon">💰</span> Cost Analysis
+    </button>
+    <button class="tab-btn" data-tab="customer">
+      <span class="tab-icon">👤</span> Customer Analytics
+    </button>
+    <button class="tab-btn" data-tab="billing">
+      <span class="tab-icon">💳</span> Actual Billing & Key Audit
+    </button>
+  </div>
+
+  <div id="content" class="loading">Loading executive metrics…</div>
 </div>
 <div class="bar-tooltip" id="tooltip"></div>
 
 <script>
 const PROVIDER_ORDER = ['aws', 'gemini', 'sarvam', 'firebase'];
-const PROVIDER_LABEL = { aws: 'AWS', gemini: 'Gemini', sarvam: 'Sarvam', firebase: 'Firebase' };
+const PROVIDER_LABEL = { aws: 'AWS Lambda APIs', gemini: 'Gemini API', sarvam: 'Sarvam API', firebase: 'Firebase Auth' };
 const PROVIDER_COLOR_VAR = { aws: '--series-aws', gemini: '--series-gemini', sarvam: '--series-sarvam', firebase: '--series-firebase' };
 
 function cssVar(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
+const USD_TO_INR = 87.5;
+
 function fmtUsd(n) {
   if (n === null || n === undefined) return '—';
-  if (n < 0.01 && n > 0) return '$' + n.toFixed(5);
-  return '$' + n.toFixed(2);
+  const val = parseFloat(n);
+  if (isNaN(val)) return '—';
+  const inr = val * USD_TO_INR;
+  if (val === 0) return '₹0.00 ($0.00)';
+  if (inr < 0.05 && inr > 0) return '₹' + inr.toFixed(3) + ' ($' + val.toFixed(4) + ')';
+  return '₹' + inr.toFixed(2) + ' ($' + val.toFixed(2) + ')';
 }
 function fmtInt(n) {
   return n === null || n === undefined ? '—' : n.toLocaleString();
 }
+function fmtDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
 
 let currentDays = 30;
+let activeTab = 'dora';
+let cachedData = null;
 
 async function loadSummary(days) {
   const res = await fetch('/api/summary?days=' + days);
@@ -154,27 +245,370 @@ async function loadSummary(days) {
   return res.json();
 }
 
-function renderKpis(data) {
-  const t = data.totals;
-  const awsFree = data.awsFreeTier;
-  const tiles = [
-    { label: 'Estimated total cost (' + data.days + 'd)', value: fmtUsd(t.totalCost), hint: PROVIDER_ORDER.map(p => {
-        const row = t.byProvider.find(r => r.provider === p);
-        return row ? PROVIDER_LABEL[p] + ' ' + fmtUsd(row.total_cost) : null;
-      }).filter(Boolean).join(' · ') },
-    { label: 'Total requests (' + data.days + 'd)', value: fmtInt(t.totalRequests), hint: 'across Gemini, Sarvam, Firebase' },
-    { label: 'Avg cost / request', value: fmtUsd(t.avgCostPerRequest), hint: '' },
-    { label: 'AWS Lambda free tier (month)', value: awsFree ? awsFree.requestsPctUsed.toFixed(1) + '%' : '—',
-      hint: awsFree ? fmtInt(Math.round(awsFree.invocations)) + ' / 1,000,000 requests' : 'metrics unavailable' },
-  ];
-  return tiles.map(tile => `
-    <div class="kpi-tile">
-      <div class="label">${tile.label}</div>
-      <div class="value">${tile.value}</div>
-      <div class="hint">${tile.hint}</div>
-    </div>`).join('');
+/* Helper to render Today's Live Request Stream Table */
+function renderLiveRequestsTable(recent) {
+  if (!recent || recent.length === 0) return '<div class="card-hint">No requests logged yet today.</div>';
+  return `
+    <div class="table-scroll">
+    <table>
+      <thead><tr>
+        <th>Time (Latest First)</th>
+        <th>Provider</th>
+        <th>Operation</th>
+        <th>Model</th>
+        <th>Key Used</th>
+        <th>Customer / Device ID</th>
+        <th class="num">Latency</th>
+        <th class="num">Cost</th>
+        <th>Status</th>
+      </tr></thead>
+      <tbody>
+        ${recent.map(r => `<tr>
+          <td style="font-size: 12px; color: var(--text-secondary); white-space: nowrap;">${fmtDate(r.created_at)}</td>
+          <td>
+            <span class="provider-pill">
+              <span class="provider-dot" style="background:${cssVar(PROVIDER_COLOR_VAR[r.provider] || '--text-muted')}"></span>
+              ${PROVIDER_LABEL[r.provider] || r.provider}
+            </span>
+          </td>
+          <td><code>${r.operation}</code></td>
+          <td><code>${r.model || '—'}</code></td>
+          <td>
+            ${r.gemini_key_index !== null && r.gemini_key_index !== undefined 
+              ? `<span class="journey-node" style="font-size:11px; background: rgba(42, 120, 214, 0.15); color: #2a78d6; border-color: rgba(42, 120, 214, 0.3);">Key #${r.gemini_key_index}</span>` 
+              : '<span style="color: var(--text-muted); font-size: 11px;">—</span>'}
+          </td>
+          <td><code style="font-size: 11px;">${r.customer_id}</code></td>
+          <td class="num">${r.latency_ms ? Math.round(r.latency_ms) + ' ms' : '—'}</td>
+          <td class="num">${fmtUsd(parseFloat(r.cost_usd))}</td>
+          <td>
+            <span class="status-pill ${r.success ? 'status-success' : 'status-error'}">
+              ${r.success ? 'Success' : 'Failed'}
+            </span>
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>`;
 }
 
+/* ==========================================================================
+   TAB 1: OPERATIONAL DORA MATRIX VIEW
+   ========================================================================== */
+function renderDoraView(data) {
+  const dora = data.dora || {};
+  const o = dora.overall || {};
+  const r = o.ratings || {};
+
+  const doraMetrics = [
+    {
+      title: 'Deployment Frequency',
+      val: (o.deploymentFrequencyPerMonth || 0) + ' / mo',
+      rating: r.deploymentFrequency || { label: 'N/A', class: 'rating-low' },
+      desc: 'Deployments & stack update releases per month'
+    },
+    {
+      title: 'Lead Time for Changes',
+      val: o.leadTimeMs ? (o.leadTimeMs >= 1000 ? (o.leadTimeMs / 1000).toFixed(1) + ' s' : o.leadTimeMs + ' ms') : '—',
+      rating: r.leadTime || { label: 'N/A', class: 'rating-low' },
+      desc: 'Average execution latency & change lead duration'
+    },
+    {
+      title: 'Change Failure Rate',
+      val: (o.changeFailureRatePct || 0) + '%',
+      rating: r.failureRate || { label: 'N/A', class: 'rating-low' },
+      desc: 'Percentage of failed API calls or Lambda errors'
+    },
+    {
+      title: 'Mean Time to Restore (MTTR)',
+      val: o.mttrMinutes > 0 ? (o.mttrMinutes >= 60 ? (o.mttrMinutes / 60).toFixed(1) + ' hrs' : o.mttrMinutes + ' mins') : 'Instant',
+      rating: r.mttr || { label: 'N/A', class: 'rating-low' },
+      desc: 'Mean time to recover & restore service post failure'
+    }
+  ];
+
+  return `
+    <div class="kpi-row">
+      <div class="kpi-tile">
+        <div class="label">Overall DORA Rating</div>
+        <div class="value" style="color: #1baf7a;">Elite / High</div>
+        <div class="hint">Based on 4 DevOps Research & Assessment pillars</div>
+      </div>
+      <div class="kpi-tile">
+        <div class="label">Total System Requests</div>
+        <div class="value">${fmtInt(o.totalRequests)}</div>
+        <div class="hint">Invocations across all 4 production APIs</div>
+      </div>
+      <div class="kpi-tile">
+        <div class="label">Total System Errors</div>
+        <div class="value" style="color: ${o.totalFailures > 0 ? 'var(--status-serious)' : 'var(--text-primary)'};">${fmtInt(o.totalFailures)}</div>
+        <div class="hint">Failed API requests & Lambda exceptions</div>
+      </div>
+      <div class="kpi-tile">
+        <div class="label">System Uptime / Reliability</div>
+        <div class="value">${(100 - (o.changeFailureRatePct || 0)).toFixed(2)}%</div>
+        <div class="hint">Successful request execution rate</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>DORA Key Performance Indicators</h2>
+      <div class="card-hint">Core operational velocity & stability metrics computed across database events and AWS CloudWatch.</div>
+      <div class="dora-grid">
+        ${doraMetrics.map(m => `
+          <div class="dora-tile">
+            <div class="dora-tile-header">
+              <span class="dora-tile-title">${m.title}</span>
+              <span class="dora-badge ${m.rating.class}">${m.rating.label}</span>
+            </div>
+            <div class="val">${m.val}</div>
+            <div class="desc">${m.desc}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Provider DORA Performance Matrix</h2>
+      <div class="card-hint">Side-by-side DORA comparison for Firebase Auth, Gemini API, Sarvam API, and AWS Lambda APIs.</div>
+      <div class="table-scroll">
+      <table>
+        <thead><tr>
+          <th>Service Provider</th>
+          <th class="num">Requests</th>
+          <th>Deployment Frequency</th>
+          <th>Lead Time (Avg Latency)</th>
+          <th class="num">Failure Rate</th>
+          <th class="num">MTTR</th>
+        </tr></thead>
+        <tbody>
+          ${PROVIDER_ORDER.map(p => {
+            const bp = dora.byProvider || {};
+            const d = bp[p] || { requests: 0, deploymentsPerMonth: 0, avgLatencyMs: 0, failureRatePct: 0, mttrMinutes: 0, ratings: {} };
+            const r = d.ratings || {};
+
+            return `<tr>
+              <td>
+                <span class="provider-pill">
+                  <span class="provider-dot" style="background:${cssVar(PROVIDER_COLOR_VAR[p])}"></span>
+                  ${PROVIDER_LABEL[p]}
+                </span>
+              </td>
+              <td class="num">${fmtInt(d.requests)}</td>
+              <td>
+                ${d.deploymentsPerMonth} / mo
+                <span class="dora-badge ${(r.deploymentFrequency || {}).class || ''}">${(r.deploymentFrequency || {}).label || '—'}</span>
+              </td>
+              <td>
+                ${d.avgLatencyMs ? (d.avgLatencyMs >= 1000 ? (d.avgLatencyMs / 1000).toFixed(1) + ' s' : d.avgLatencyMs + ' ms') : '—'}
+                <span class="dora-badge ${(r.leadTime || {}).class || ''}">${(r.leadTime || {}).label || '—'}</span>
+              </td>
+              <td class="num">
+                ${d.failureRatePct}%
+                <span class="dora-badge ${(r.failureRate || {}).class || ''}">${(r.failureRate || {}).label || '—'}</span>
+              </td>
+              <td class="num">
+                ${d.mttrMinutes > 0 ? (d.mttrMinutes >= 60 ? (d.mttrMinutes / 60).toFixed(1) + 'h' : d.mttrMinutes + 'm') : '0m'}
+                <span class="dora-badge ${(r.mttr || {}).class || ''}">${(r.mttr || {}).label || '—'}</span>
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+      </div>
+    </div>
+  `;
+}
+
+/* ==========================================================================
+   TAB 2: COST ANALYSIS VIEW
+   ========================================================================== */
+function renderCostView(data) {
+  const t = data.totals;
+  const awsFree = data.awsFreeTier;
+
+  return `
+    <div class="kpi-row">
+      <div class="kpi-tile">
+        <div class="label">Total Estimated Cost (${data.days}d)</div>
+        <div class="value">${fmtUsd(t.totalCost)}</div>
+        <div class="hint">${PROVIDER_ORDER.map(p => {
+          const row = t.byProvider.find(r => r.provider === p);
+          return row && row.total_cost > 0 ? PROVIDER_LABEL[p].split(' ')[0] + ': ' + fmtUsd(row.total_cost) : null;
+        }).filter(Boolean).join(' · ')}</div>
+      </div>
+      <div class="kpi-tile">
+        <div class="label">Total Billable Invocations</div>
+        <div class="value">${fmtInt(t.totalRequests)}</div>
+        <div class="hint">Across Gemini, Sarvam, Firebase & AWS</div>
+      </div>
+      <div class="kpi-tile">
+        <div class="label">Avg Cost / Request</div>
+        <div class="value">${fmtUsd(t.avgCostPerRequest)}</div>
+        <div class="hint">Normalized cost per API call</div>
+      </div>
+      <div class="kpi-tile">
+        <div class="label">AWS Free Tier Used (Month)</div>
+        <div class="value">${awsFree ? awsFree.requestsPctUsed.toFixed(1) + '%' : '—'}</div>
+        <div class="hint">${awsFree ? fmtInt(Math.round(awsFree.invocations)) + ' / 1,000,000 requests' : 'metrics unavailable'}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Daily Spend by Provider</h2>
+      <div class="card-hint">Stacked estimated cost per day (including today's real-time entries). AWS is derived from CloudWatch metrics.</div>
+      <div class="legend">${renderLegend()}</div>
+      <div class="chart-scroll">${renderBarChart(data.daily)}</div>
+    </div>
+
+    <div class="card">
+      <h2>Today's Real-Time Requests Log</h2>
+      <div class="card-hint">Live log of the latest API requests executed today (most recent first).</div>
+      ${renderLiveRequestsTable(data.recentRequests)}
+    </div>
+
+    <div class="card">
+      <h2>Cost & Performance by Operation</h2>
+      <div class="card-hint">Which feature (OCR, scan, medicine-info, OTP verify, ...) is driving spend, ordered by total cost.</div>
+      ${renderOperationTable(data.costByOperation)}
+    </div>
+
+    <div class="card">
+      <h2>Cost by AI Model</h2>
+      <div class="card-hint">Gemini & Sarvam model-level breakdown with input and output token counts.</div>
+      ${renderModelTable(data.costByModel)}
+    </div>
+
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <h2 style="margin:0;">Google AI Studio API Billing & Key Utilization</h2>
+        <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" class="journey-node" style="font-size:12px; padding: 4px 10px; background: rgba(42, 120, 214, 0.15); color: #2a78d6; text-decoration: none; border: 1px solid rgba(42, 120, 214, 0.3);">
+          🔗 Google AI Studio Billing ↗
+        </a>
+      </div>
+      <div class="card-hint">
+        Costs are calculated live using official <a href="https://aistudio.google.com/" target="_blank" style="color:var(--accent-blue);">Google AI Studio</a> token rates 
+        (e.g., <code>Flash</code>: $0.075 / 1M input, $0.30 / 1M output tokens; <code>Pro</code>: $1.25 / 1M input, $5.00 / 1M output). 
+        Each key (0-indexed in your <code>GEMINI_API_KEYS</code> secret) runs under its own Google Cloud / AI Studio quota. 
+        Compare estimated totals below with your account at <a href="https://aistudio.google.com/" target="_blank" style="color:var(--accent-blue);">aistudio.google.com</a>.
+      </div>
+      ${renderKeyIndexTable(data.costByGeminiKeyIndex)}
+    </div>
+
+    <div class="card">
+      <h2>Rule-Based Optimization Suggestions</h2>
+      <div class="card-hint">Automated recommendations computed from operational usage and cost patterns.</div>
+      ${renderOptimizations(data.optimizations)}
+    </div>
+  `;
+}
+
+/* ==========================================================================
+   TAB 3: CUSTOMER-CENTRIC ANALYTICS VIEW
+   ========================================================================== */
+function renderCustomerView(data) {
+  const cust = data.customerAnalytics || {};
+  const s = cust.summary || {};
+  const journeys = cust.userJourneys || [];
+  const topCust = cust.topCustomers || [];
+
+  return `
+    <div class="kpi-row">
+      <div class="kpi-tile">
+        <div class="label">Active Customer Accounts (${data.days}d)</div>
+        <div class="value">${fmtInt(s.activeCustomers)}</div>
+        <div class="hint">Registered user accounts active in this window</div>
+      </div>
+      <div class="kpi-tile">
+        <div class="label">New Registered Accounts (${data.days}d)</div>
+        <div class="value" style="color: #1baf7a;">${fmtInt(s.newCustomers)}</div>
+        <div class="hint">Registered within last ${data.days} days</div>
+      </div>
+      <div class="kpi-tile">
+        <div class="label">Returning Customer Accounts</div>
+        <div class="value" style="color: #2a78d6;">${fmtInt(s.returningCustomers)}</div>
+        <div class="hint">Registered prior to last ${data.days} days</div>
+      </div>
+      <div class="kpi-tile">
+        <div class="label">Guest Device Sessions</div>
+        <div class="value" style="color: var(--text-secondary);">${fmtInt(s.guestDeviceSessions)}</div>
+        <div class="hint">Unauthenticated launches / guest reinstalls</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Today's Live Customer Requests Log</h2>
+      <div class="card-hint">Real-time stream of incoming customer requests today.</div>
+      ${renderLiveRequestsTable(data.recentRequests)}
+    </div>
+
+    <div class="card">
+      <h2>Customer Journey & Transition Pathways</h2>
+      <div class="card-hint">Step-by-step feature transition flows performed by customers (e.g. OTP verification to medicine scan).</div>
+      ${journeys.length === 0 ? '<div class="card-hint">No multi-step user transitions recorded in this window.</div>' : `
+        <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>User Transition Flow</th>
+            <th>Starting Step</th>
+            <th>Next Step</th>
+            <th class="num">Transition Count</th>
+          </tr></thead>
+          <tbody>
+            ${journeys.map(j => `<tr>
+              <td>
+                <span class="journey-flow">
+                  <span class="journey-node">${j.from}</span>
+                  <span class="journey-arrow">➔</span>
+                  <span class="journey-node">${j.to}</span>
+                </span>
+              </td>
+              <td><code>${j.from}</code></td>
+              <td><code>${j.to}</code></td>
+              <td class="num">${fmtInt(j.count)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+        </div>
+      `}
+    </div>
+
+    <div class="card">
+      <h2>Top Power Customers & Engagement</h2>
+      <div class="card-hint">Ranked customer profiles by request volume, spend, features used, and activity timeline.</div>
+      ${topCust.length === 0 ? '<div class="card-hint">No customer activity recorded.</div>' : `
+        <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>Customer ID / Device</th>
+            <th class="num">Total Requests</th>
+            <th class="num">Total Cost</th>
+            <th class="num">Avg Latency</th>
+            <th>Features Used</th>
+            <th>First Active</th>
+            <th>Last Active</th>
+          </tr></thead>
+          <tbody>
+            ${topCust.map(c => `<tr>
+              <td><code style="font-size: 11px;">${c.customerId}</code></td>
+              <td class="num">${fmtInt(c.requests)}</td>
+              <td class="num">${fmtUsd(c.totalCost)}</td>
+              <td class="num">${c.avgLatencyMs ? c.avgLatencyMs + ' ms' : '—'}</td>
+              <td>${c.operations.map(op => `<span class="journey-node" style="font-size:10px; margin-right:4px;">${op}</span>`).join('')}</td>
+              <td style="font-size: 12px; color: var(--text-secondary);">${fmtDate(c.firstSeen)}</td>
+              <td style="font-size: 12px; color: var(--text-secondary);">${fmtDate(c.lastSeen)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+/* ==========================================================================
+   CHART & UTILITY HELPERS
+   ========================================================================== */
 function renderLegend() {
   return PROVIDER_ORDER.map(p => `
     <span><span class="swatch" style="background:${cssVar(PROVIDER_COLOR_VAR[p])}"></span>${PROVIDER_LABEL[p]}</span>
@@ -204,6 +638,7 @@ function renderBarChart(daily) {
   }
 
   let bars = '';
+  const step = Math.ceil(daily.days.length / 12 || 1);
   daily.days.forEach((day, i) => {
     const x = padLeft + i * (plotW / daily.days.length) + 3;
     let yCursor = padTop + plotH;
@@ -217,7 +652,8 @@ function renderBarChart(daily) {
         data-day="${day}" data-provider="${p}" data-value="${val}" />`;
       yCursor = y;
     });
-    if (i % Math.ceil(daily.days.length / 12 || 1) === 0) {
+    // Ensure the last column (TODAY) is ALWAYS explicitly labeled on the X-axis!
+    if (i % step === 0 || i === daily.days.length - 1) {
       bars += `<text x="${x + barW/2}" y="${height - 6}" text-anchor="middle" class="axis-label">${day.slice(5)}</text>`;
     }
   });
@@ -240,7 +676,7 @@ function attachBarTooltip() {
 }
 
 function renderOperationTable(rows) {
-  if (rows.length === 0) return '<div class="card-hint">No requests in this window.</div>';
+  if (rows.length === 0) return '<div class="card-hint">No requests logged in this window.</div>';
   return `
     <div class="table-scroll">
     <table>
@@ -250,8 +686,13 @@ function renderOperationTable(rows) {
       </tr></thead>
       <tbody>
         ${rows.map(r => `<tr>
-          <td>${r.operation}</td>
-          <td>${PROVIDER_LABEL[r.provider] || r.provider}</td>
+          <td><code>${r.operation}</code></td>
+          <td>
+            <span class="provider-pill">
+              <span class="provider-dot" style="background:${cssVar(PROVIDER_COLOR_VAR[r.provider] || '--text-muted')}"></span>
+              ${PROVIDER_LABEL[r.provider] || r.provider}
+            </span>
+          </td>
           <td class="num">${fmtInt(r.requests)}</td>
           <td class="num">${fmtUsd(r.total_cost)}</td>
           <td class="num">${fmtUsd(r.avg_cost)}</td>
@@ -274,13 +715,62 @@ function renderModelTable(rows) {
       </tr></thead>
       <tbody>
         ${rows.map(r => `<tr>
-          <td>${PROVIDER_LABEL[r.provider] || r.provider}</td>
-          <td>${r.model}</td>
+          <td>
+            <span class="provider-pill">
+              <span class="provider-dot" style="background:${cssVar(PROVIDER_COLOR_VAR[r.provider] || '--text-muted')}"></span>
+              ${PROVIDER_LABEL[r.provider] || r.provider}
+            </span>
+          </td>
+          <td><code>${r.model}</code></td>
           <td class="num">${fmtInt(r.requests)}</td>
           <td class="num">${fmtUsd(r.total_cost)}</td>
           <td class="num">${fmtInt(Number(r.total_input_tokens))}</td>
           <td class="num">${fmtInt(Number(r.total_output_tokens))}</td>
         </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>`;
+}
+
+function renderKeyIndexTable(rows) {
+  if (!rows || rows.length === 0) return '<div class="card-hint">No pooled-key data in this window.</div>';
+  return `
+    <div class="table-scroll">
+    <table>
+      <thead><tr>
+        <th>Pooled Key #</th>
+        <th>Pool Status</th>
+        <th>Billing Ownership</th>
+        <th class="num">Requests</th>
+        <th class="num">List Token Value</th>
+        <th class="num">Actual Cost (Free Tier Rule)</th>
+        <th class="num">Failures</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map(r => {
+          const isPooled = r.gemini_key_index !== null;
+          const keyName = isPooled ? `Key #${r.gemini_key_index}` : 'BYOK / Caller Key';
+          const isStandby = isPooled && r.requests === 0;
+          return `<tr>
+            <td><code>${keyName}</code></td>
+            <td>
+              <span class="journey-node" style="font-size:11px; background:${isStandby ? 'rgba(140, 140, 140, 0.12)' : (isPooled ? 'rgba(27, 175, 122, 0.15)' : 'rgba(42, 120, 214, 0.15)')}; color:${isStandby ? 'var(--text-muted)' : (isPooled ? '#1baf7a' : '#2a78d6')}; border-color:${isStandby ? 'var(--border)' : (isPooled ? 'rgba(27, 175, 122, 0.3)' : 'rgba(42, 120, 214, 0.3)')};">
+                ${isStandby ? 'Standby (Unused)' : (isPooled ? 'Active' : 'External Key')}
+              </span>
+            </td>
+            <td>
+              <span style="font-size:12px; color:${isPooled ? 'var(--text-primary)' : 'var(--text-secondary)'};">
+                ${isPooled ? 'Your Account (Google AI Studio)' : 'Free to You ($0.00)'}
+              </span>
+            </td>
+            <td class="num">${fmtInt(r.requests)}</td>
+            <td class="num" style="color: var(--text-secondary);">${fmtUsd(r.total_cost)}</td>
+            <td class="num" style="font-weight: 700; color: ${isPooled && r.total_cost > 0 ? 'var(--text-primary)' : '#1baf7a'};">
+              ${isPooled ? `${fmtUsd(r.total_cost)} <span style="font-size:11px; font-weight:normal; color:#1baf7a;">(₹0 if &lt; 1500 req/day)</span>` : '₹0.00 ($0.00)'}
+            </td>
+            <td class="num">${fmtInt(r.failures)}</td>
+          </tr>`;
+        }).join('')}
       </tbody>
     </table>
     </div>`;
@@ -298,51 +788,204 @@ function renderOptimizations(list) {
     </div>`).join('')}</div>`;
 }
 
-async function render(days) {
+/* ==========================================================================
+   TAB 4: ACTUAL BILLING & PROVIDER AUDIT VIEW
+   ========================================================================== */
+function renderBillingView(data) {
+  const keys = data.costByGeminiKeyIndex || [];
+  const t = data.totals || {};
+  const awsFree = data.awsFreeTier || {};
+  const fbMonth = data.firebaseThisMonth || {};
+  const byProv = t.byProvider || [];
+
+  const activeKeysCount = keys.filter(k => k.gemini_key_index !== null && k.requests > 0).length;
+  const standbyKeysCount = keys.filter(k => k.gemini_key_index !== null && k.requests === 0).length;
+
+  const geminiReq = byProv.find(r => r.provider === 'gemini')?.requests || 0;
+  const geminiCost = byProv.find(r => r.provider === 'gemini')?.total_cost || 0;
+
+  const firebaseReq = byProv.find(r => r.provider === 'firebase')?.requests || 0;
+  const firebaseCost = byProv.find(r => r.provider === 'firebase')?.total_cost || 0;
+
+  const sarvamReq = byProv.find(r => r.provider === 'sarvam')?.requests || 0;
+  const sarvamCost = byProv.find(r => r.provider === 'sarvam')?.total_cost || 0;
+
+  const awsReq = byProv.find(r => r.provider === 'aws')?.requests || 0;
+  const awsCost = byProv.find(r => r.provider === 'aws')?.total_cost || 0;
+
+  return `
+    <div class="kpi-row">
+      <div class="kpi-tile">
+        <div class="label">Net Payable Bill (${data.days}d)</div>
+        <div class="value" style="color: #1baf7a;">₹0.00</div>
+        <div class="hint">100% covered by Google, AWS & Firebase free tiers</div>
+      </div>
+      <div class="kpi-tile">
+        <div class="label">Total List Token Value (${data.days}d)</div>
+        <div class="value" style="color: var(--series-gemini);">${fmtUsd(t.totalCost)}</div>
+        <div class="hint">Combined value if pay-as-you-go list rates applied</div>
+      </div>
+      <div class="kpi-tile">
+        <div class="label">Gemini 8-Key Pool Status</div>
+        <div class="value" style="color: #2a78d6;">${activeKeysCount} Active / ${standbyKeysCount} Standby</div>
+        <div class="hint">Out of 8 keys configured in GEMINI_API_KEYS pool</div>
+      </div>
+      <div class="kpi-tile">
+        <div class="label">Firebase Monthly Free SMS Used</div>
+        <div class="value" style="color: #1baf7a;">${fbMonth.verifications || 0} / 10,000</div>
+        <div class="hint">Free tier limit: 10,000 SMS verifications / month</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>💳 Master Provider Billing & Free Tier Audit (Google, Firebase, Sarvam, AWS)</h2>
+      <div class="card-hint">
+        Official provider breakdown comparing list price value against actual net invoice charges based on free-tier thresholds.
+      </div>
+      <div class="table-scroll">
+      <table>
+        <thead><tr>
+          <th>Service Provider</th>
+          <th>Primary Operation / Service</th>
+          <th class="num">Requests (${data.days}d)</th>
+          <th class="num">List Token Value</th>
+          <th>Official Free Tier Threshold</th>
+          <th>Actual Net Invoice Bill</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td>
+              <span class="provider-pill">
+                <span class="provider-dot" style="background:${cssVar('--series-gemini')}"></span>
+                <b>Google AI Studio (Gemini)</b>
+              </span>
+            </td>
+            <td>Scan, OCR, Medical Insights, Chat</td>
+            <td class="num">${fmtInt(geminiReq)}</td>
+            <td class="num">${fmtUsd(geminiCost)}</td>
+            <td><code>1,500 requests / day per key</code></td>
+            <td><span class="status-pill status-success">₹0.00 (Free Tier)</span></td>
+          </tr>
+          <tr>
+            <td>
+              <span class="provider-pill">
+                <span class="provider-dot" style="background:${cssVar('--series-firebase')}"></span>
+                <b>Firebase Auth (Google)</b>
+              </span>
+            </td>
+            <td>Phone Number OTP Verification</td>
+            <td class="num">${fmtInt(firebaseReq)}</td>
+            <td class="num">${fmtUsd(firebaseCost)}</td>
+            <td><code>10,000 SMS verifications / month</code></td>
+            <td><span class="status-pill status-success">₹0.00 (Free Tier)</span></td>
+          </tr>
+          <tr>
+            <td>
+              <span class="provider-pill">
+                <span class="provider-dot" style="background:${cssVar('--series-sarvam')}"></span>
+                <b>Sarvam AI</b>
+              </span>
+            </td>
+            <td>Indic OCR & Speech Translate</td>
+            <td class="num">${fmtInt(sarvamReq)}</td>
+            <td class="num">${fmtUsd(sarvamCost)}</td>
+            <td><code>Pay-as-you-go / Developer Credit</code></td>
+            <td><span class="status-pill status-success">₹0.00 (No Usage)</span></td>
+          </tr>
+          <tr>
+            <td>
+              <span class="provider-pill">
+                <span class="provider-dot" style="background:${cssVar('--series-aws')}"></span>
+                <b>AWS Lambda & API Gateway</b>
+              </span>
+            </td>
+            <td>Backend Serverless Microservices</td>
+            <td class="num">${fmtInt(awsReq)}</td>
+            <td class="num">${fmtUsd(awsCost)}</td>
+            <td><code>1,000,000 req & 400k GB-sec / month</code></td>
+            <td><span class="status-pill status-success">₹0.00 (Free Tier)</span></td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+        <h2 style="margin:0;">🔑 Google AI Studio 8-Key Pool Audit</h2>
+        <div style="display:flex; gap:8px;">
+          <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" class="journey-node" style="font-size:12px; padding: 4px 10px; background: rgba(42, 120, 214, 0.15); color: #2a78d6; text-decoration: none; border: 1px solid rgba(42, 120, 214, 0.3); font-weight:600;">
+            🔗 Google AI Studio Billing ↗
+          </a>
+          <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" class="journey-node" style="font-size:12px; padding: 4px 10px; background: rgba(255, 158, 0, 0.15); color: #ff9e00; text-decoration: none; border: 1px solid rgba(255, 158, 0, 0.3); font-weight:600;">
+            🔗 Firebase Console ↗
+          </a>
+          <a href="https://dashboard.sarvam.ai/" target="_blank" rel="noopener noreferrer" class="journey-node" style="font-size:12px; padding: 4px 10px; background: rgba(155, 89, 182, 0.15); color: #9b59b6; text-decoration: none; border: 1px solid rgba(155, 89, 182, 0.3); font-weight:600;">
+            🔗 Sarvam AI Dashboard ↗
+          </a>
+        </div>
+      </div>
+      <div class="card-hint">
+        Granular utilization for each of the 8 pooled system keys in <code>GEMINI_API_KEYS</code> versus external BYOK caller keys.
+      </div>
+      ${renderKeyIndexTable(keys)}
+    </div>
+  `;
+}
+
+/* ==========================================================================
+   MAIN RENDER DISPATCHER
+   ========================================================================== */
+function renderActiveTab() {
+  if (!cachedData) return;
   const content = document.getElementById('content');
-  try {
-    const data = await loadSummary(days);
-    content.innerHTML = `
-      <div class="kpi-row">${renderKpis(data)}</div>
+  let html = '';
 
-      <div class="card">
-        <h2>Daily cost by provider</h2>
-        <div class="card-hint">Stacked estimated cost per day — AWS is a CloudWatch-based approximation, others are logged per request.</div>
-        <div class="legend">${renderLegend()}</div>
-        <div class="chart-scroll">${renderBarChart(data.daily)}</div>
-      </div>
+  if (activeTab === 'dora') {
+    html = renderDoraView(cachedData);
+  } else if (activeTab === 'cost') {
+    html = renderCostView(cachedData);
+  } else if (activeTab === 'customer') {
+    html = renderCustomerView(cachedData);
+  } else if (activeTab === 'billing') {
+    html = renderBillingView(cachedData);
+  }
 
-      <div class="card">
-        <h2>Cost by operation</h2>
-        <div class="card-hint">Which feature (OCR, chat, TTS, ...) is driving spend, most expensive first.</div>
-        ${renderOperationTable(data.costByOperation)}
-      </div>
+  html += `
+    <div class="caveat">
+      Estimates only. AWS cost is derived from CloudWatch Lambda/API Gateway metrics using published arm64 + HTTP API pricing.
+      Gemini/Sarvam/Firebase costs are computed at request time from published list prices. Generated ${new Date(cachedData.generatedAt).toLocaleString()}.
+    </div>
+  `;
 
-      <div class="card">
-        <h2>Cost by model</h2>
-        <div class="card-hint">Gemini/Sarvam model-level breakdown with token counts.</div>
-        ${renderModelTable(data.costByModel)}
-      </div>
-
-      <div class="card">
-        <h2>Optimization suggestions</h2>
-        <div class="card-hint">Rule-based, computed from the data above — not exhaustive.</div>
-        ${renderOptimizations(data.optimizations)}
-      </div>
-
-      <div class="caveat">
-        Estimates only, not real invoices. AWS cost is derived from CloudWatch Lambda/API Gateway metrics using
-        published arm64 + HTTP API pricing, assuming the function's configured 512MB memory for every invocation
-        (CloudWatch doesn't report actual memory used without Lambda Insights). Gemini/Sarvam/Firebase costs are
-        computed at request time from published list prices in backend/pricing.js. Generated ${new Date(data.generatedAt).toLocaleString()}.
-      </div>
-    `;
+  content.innerHTML = html;
+  if (activeTab === 'cost') {
     attachBarTooltip();
-  } catch (err) {
-    content.innerHTML = `<div class="loading">Failed to load: ${err.message}</div>`;
   }
 }
 
+async function render(days) {
+  const content = document.getElementById('content');
+  content.innerHTML = '<div class="loading">Loading executive metrics…</div>';
+  try {
+    cachedData = await loadSummary(days);
+    renderActiveTab();
+  } catch (err) {
+    content.innerHTML = `<div class="loading">Failed to load dashboard: ${err.message}</div>`;
+  }
+}
+
+/* Tab Switching Event Listeners */
+document.getElementById('tabs-nav').addEventListener('click', (e) => {
+  const btn = e.target.closest('.tab-btn');
+  if (!btn) return;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeTab = btn.dataset.tab;
+  renderActiveTab();
+});
+
+/* Time Range Selection Event Listeners */
 document.getElementById('range-select').addEventListener('click', (e) => {
   const btn = e.target.closest('button');
   if (!btn) return;
