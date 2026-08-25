@@ -273,6 +273,7 @@ function renderLiveRequestsTable(recent) {
         <th>Customer / Device ID</th>
         <th class="num">Input Tokens</th>
         <th class="num">Output Tokens</th>
+        <th class="num">Thinking</th>
         <th class="num">Latency</th>
         <th class="num">Cost</th>
         <th>Status</th>
@@ -299,6 +300,11 @@ function renderLiveRequestsTable(recent) {
             : r.units ? fmtInt(Number(r.units)) + ' u' : '—'}</td>
           <td class="num">${!TOKEN_METERED_PROVIDERS.has(r.provider) || !r.output_tokens ? '—'
             : fmtInt(Number(r.output_tokens))}</td>
+          <!-- Reasoning tokens: billed at the output rate but stored separately, so Cost already
+               includes them while Output Tokens does not. Shown so the two reconcile. Null on rows
+               written before the backend started capturing thoughtsTokenCount. -->
+          <td class="num">${r.thinking_tokens === null || r.thinking_tokens === undefined ? '—'
+            : fmtInt(Number(r.thinking_tokens))}</td>
           <td class="num">${r.latency_ms ? Math.round(r.latency_ms) + ' ms' : '—'}</td>
           <td class="num">${fmtUsd(parseFloat(r.cost_usd))}</td>
           <td>
@@ -652,6 +658,7 @@ function renderTokenUsage(data) {
       <td class="num">${fmtInt(p.requests)}</td>
       <td class="num">${fmtTokens(p.inputTokens)}</td>
       <td class="num">${fmtTokens(p.outputTokens)}</td>
+      <td class="num">${p.thinkingTokens > 0 ? fmtTokens(p.thinkingTokens) : '—'}</td>
       <td class="num">${fmtInt(p.avgInputPerRequest)}</td>
       <td class="num">${fmtInt(p.avgOutputPerRequest)}</td>
       <td class="num">${p.units > 0 ? fmtInt(p.units) : '—'}</td>
@@ -670,6 +677,7 @@ function renderTokenUsage(data) {
       <td class="num">${fmtInt(c.requests)}</td>
       <td class="num">${fmtTokens(c.inputTokens)}</td>
       <td class="num">${fmtTokens(c.outputTokens)}</td>
+      <td class="num">${c.thinkingTokens > 0 ? fmtTokens(c.thinkingTokens) : '—'}</td>
       <td class="num">${fmtInt(c.avgInputPerRequest)}</td>
       <td class="num">${fmtInt(c.avgOutputPerRequest)}</td>
       <td class="num">${ratio(c.ioRatio)}</td>
@@ -689,9 +697,15 @@ function renderTokenUsage(data) {
         <div class="hint">${fmtInt(t.avgOutputPerRequest)} per request on average</div>
       </div>
       <div class="kpi-tile">
+        <div class="label">Thinking Tokens (${data.days}d)</div>
+        <div class="value" style="color:${t.thinkingShareOfOutput !== null && t.thinkingShareOfOutput > 0.5 ? '#e8833a' : 'inherit'};">${fmtTokens(t.thinkingTokens)}</div>
+        <div class="hint">${t.thinkingShareOfOutput === null ? 'No output tokens yet'
+          : Math.round(t.thinkingShareOfOutput * 100) + '% of billed output — cap thinkingBudget if this is high'}</div>
+      </div>
+      <div class="kpi-tile">
         <div class="label">Input : Output Ratio</div>
         <div class="value" style="color:${t.ioRatio !== null && t.ioRatio > 3 ? '#e8833a' : 'inherit'};">${ratio(t.ioRatio)}</div>
-        <div class="hint">Above 3:1 suggests prompts are large relative to answers</div>
+        <div class="hint">Against billed output (answer + thinking). Above 3:1 means prompts are large relative to answers — but output bills 5x on Flash, so a high ratio is not automatically the expensive problem</div>
       </div>
       <div class="kpi-tile">
         <div class="label">Cost per 1M Tokens</div>
@@ -709,7 +723,7 @@ function renderTokenUsage(data) {
       <table>
         <thead><tr>
           <th>Provider</th><th class="num">Requests</th>
-          <th class="num">Input</th><th class="num">Output</th>
+          <th class="num">Input</th><th class="num">Output</th><th class="num">Thinking</th>
           <th class="num">Avg In/Req</th><th class="num">Avg Out/Req</th>
           <th class="num">Units</th><th class="num">In:Out</th><th class="num">Cost</th>
         </tr></thead>
@@ -729,7 +743,7 @@ function renderTokenUsage(data) {
       <table>
         <thead><tr>
           <th>Customer</th><th>Providers</th><th class="num">Requests</th>
-          <th class="num">Input</th><th class="num">Output</th>
+          <th class="num">Input</th><th class="num">Output</th><th class="num">Thinking</th>
           <th class="num">Avg In/Req</th><th class="num">Avg Out/Req</th>
           <th class="num">In:Out</th><th class="num">Cost</th>
         </tr></thead>
@@ -846,6 +860,7 @@ function renderModelTable(rows) {
       <thead><tr>
         <th>Provider</th><th>Model</th><th class="num">Requests</th><th class="num">Total cost</th>
         <th class="num">Input tokens</th><th class="num">Output tokens</th>
+        <th class="num">Thinking tokens</th>
       </tr></thead>
       <tbody>
         ${rows.map(r => `<tr>
@@ -860,6 +875,7 @@ function renderModelTable(rows) {
           <td class="num">${fmtUsd(r.total_cost)}</td>
           <td class="num">${fmtInt(Number(r.total_input_tokens))}</td>
           <td class="num">${fmtInt(Number(r.total_output_tokens))}</td>
+          <td class="num">${fmtInt(Number(r.total_thinking_tokens || 0))}</td>
         </tr>`).join('')}
       </tbody>
     </table>
